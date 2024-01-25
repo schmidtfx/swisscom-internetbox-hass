@@ -1,15 +1,20 @@
 from typing import Any
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
-from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
-                                 CONF_VERIFY_SSL)
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
+import voluptuous as vol
 
-from .const import (CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME,
-                    DEFAULT_HOST_NAME, DEFAULT_NAME, DOMAIN)
+from .const import (
+    CONF_CONSIDER_HOME,
+    DEFAULT_CONSIDER_HOME,
+    DEFAULT_HOST_NAME,
+    DEFAULT_NAME,
+    DEFAULT_SSL,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
+)
 from .router import get_api
 
 
@@ -19,7 +24,7 @@ def _discovery_schema_with_defaults(discovery_info):
 
 def _user_schema_with_defaults(user_input):
     user_schema = {
-        vol.Optional(CONF_HOST, default=user_input.get(CONF_HOST, "")): cv.string,
+        vol.Optional(CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST_NAME)): cv.string,
     }
     user_schema.update(_ordered_shared_schema(user_input))
     return vol.Schema(user_schema)
@@ -28,8 +33,8 @@ def _user_schema_with_defaults(user_input):
 def _ordered_shared_schema(schema_input):
     return {
         vol.Required(CONF_PASSWORD, default=schema_input.get(CONF_PASSWORD, "")): cv.string,
-        vol.Optional(CONF_SSL, default=schema_input.get(CONF_SSL, True)): cv.boolean,
-        vol.Optional(CONF_VERIFY_SSL, default=schema_input.get(CONF_VERIFY_SSL, True)): cv.boolean,
+        vol.Optional(CONF_SSL, default=schema_input.get(CONF_SSL, DEFAULT_SSL)): cv.boolean,
+        vol.Optional(CONF_VERIFY_SSL, default=schema_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): cv.boolean,
     }
 
 class OptionsFlowHandler(OptionsFlow):
@@ -59,8 +64,8 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self.placeholders = {
             CONF_HOST: DEFAULT_HOST_NAME,
-            CONF_SSL: True,
-            CONF_VERIFY_SSL: True,
+            CONF_SSL: DEFAULT_SSL,
+            CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
         }
         self.discoverd = False
 
