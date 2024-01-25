@@ -7,7 +7,7 @@ from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.swisscom.const import DOMAIN
+from custom_components.swisscom_internetbox.const import DOMAIN
 
 DEVICE_INFO = {'Manufacturer': 'Arcadyan',
  'ManufacturerOUI': '1883BF',
