@@ -94,6 +94,19 @@ class SwisscomInternetbox:
         await self._create_session()
         return await self.hass.async_add_executor_job(self.api.get_devices)
     
+    async def async_update_device_trackers(self, now=None) -> bool:
+        new_devices = False
+        devices = self._get_devices()
+        now = dt_util.utcnow()
+
+        if devices is None:
+            return new_devices
+        
+        for device in devices:
+            print(device)
+
+        return new_devices
+    
     @property
     def entry_id(self):
         return self.entry.entry_id
