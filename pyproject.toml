@@ -1,5 +1,5 @@
 [project]
-name = "swisscom"
+name = "Swisscom"
 dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.11"
@@ -8,21 +8,25 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/avzhuiko/climate-remote-control"
+Homepage = "https://github.com/schmidtfx/swisscom-internetbox-hass"
 
 [build-system]
-build-backend = "setuptools"
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages=["custom_components"]
 
 [tool.pytest.ini_options]
+pythonpath=["."]
 asyncio_mode = "auto"
 testpaths = [
     "tests",
 ]
-addopts = "--strict-markers --allow-hosts=127.0.0.1,127.0.1.1"
 
 [tool.coverage.run]
 source = [
-    "custom_components.climate_remote_control"
+    "custom_components.swisscom"
 ]
 
 [tool.coverage.report]
