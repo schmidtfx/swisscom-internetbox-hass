@@ -26,7 +26,7 @@ testpaths = [
 
 [tool.coverage.run]
 source = [
-    "custom_components.swisscom"
+    "custom_components.swisscom_internetbox"
 ]
 
 [tool.coverage.report]

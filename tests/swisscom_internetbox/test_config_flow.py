@@ -1,11 +1,10 @@
 from unittest.mock import Mock, patch
 
-import pytest
 from homeassistant import config_entries, data_entry_flow
-from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
-                                 CONF_VERIFY_SSL)
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+import pytest
 
 from custom_components.swisscom_internetbox.const import DOMAIN
 
@@ -43,7 +42,7 @@ DEVICE_INFO = {'Manufacturer': 'Arcadyan',
 
 @pytest.fixture(name="service")
 def mock_controller_service():
-    with patch("custom_components.swisscom.router.InternetboxAdapter") as service_mock:
+    with patch("custom_components.swisscom_internetbox.router.InternetboxAdapter") as service_mock:
         service_mock.return_value.create_session = Mock(return_value=200)
         service_mock.return_value.get_device_info = Mock(return_value=DEVICE_INFO)
         service_mock.return_value.ssl = True
