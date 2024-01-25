@@ -1,0 +1,38 @@
+[project]
+name = "swisscom"
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/avzhuiko/climate-remote-control"
+
+[build-system]
+build-backend = "setuptools"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = [
+    "tests",
+]
+addopts = "--strict-markers --allow-hosts=127.0.0.1,127.0.1.1"
+
+[tool.coverage.run]
+source = [
+    "custom_components.climate_remote_control"
+]
+
+[tool.coverage.report]
+show_missing = "true"
+
+[tool.black]
+target-version = ["py311"]
+
+[tool.isort]
+# https://github.com/PyCQA/isort/wiki/isort-Settings
+profile = "black"
+# will group `import x` and `from x import` of the same module.
+force_sort_within_sections = true
