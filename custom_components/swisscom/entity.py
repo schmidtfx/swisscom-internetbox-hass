@@ -7,10 +7,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.update_coordinator import (CoordinatorEntity,
+                                                      DataUpdateCoordinator)
 
 from .const import DOMAIN
 from .router import SwisscomInternetbox
@@ -31,7 +29,6 @@ class SwisscomInternetboxDeviceEntity(CoordinatorEntity):
             default_model=device["DeviceType"],
             via_device=(DOMAIN, router.unique_id),
         )
-        print(self._attr_device_info)
 
     @abstractmethod
     @callback
@@ -56,5 +53,5 @@ class SwisscomInternetboxDeviceEntity(CoordinatorEntity):
     
     @property
     def _mac(self):
-        return self._device["mac"]
+        return self._device["PhysAddress"]
         

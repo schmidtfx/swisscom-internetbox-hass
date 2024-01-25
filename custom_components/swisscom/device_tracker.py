@@ -76,4 +76,17 @@ class SwisscomInternetboxScannerEntity(SwisscomInternetboxDeviceEntity, ScannerE
     def source_type(self) -> SourceType:
         return SourceType.ROUTER
     
-
+    @property
+    def mac_address(self) -> str:
+        return self._mac
+    
+    @property
+    def ip_address(self) -> str:
+        if "IPAddress" in self._device:
+            return self._device["IPAddress"]
+        return None
+    
+    @property
+    def hostname(self) -> str:
+        return self.get_hostname()
+    

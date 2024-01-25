@@ -1,16 +1,18 @@
 import asyncio
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
+from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
+                                 CONF_VERIFY_SSL)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 from sc_inetbox_adapter import InternetboxAdapter
 
-from .const import CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME, DOMAIN, MODE_ROUTER
+from .const import (CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME, DOMAIN,
+                    MODE_ROUTER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,16 +69,15 @@ class SwisscomInternetbox:
                     continue
 
                 device_mac = dict(device_entry.connections)[dr.CONNECTION_NETWORK_MAC]
-                self.decices[device_mac] = {
-                    "mac": device_mac,
-                    "name": device_entry.name,
-                    "active": False,
+                self.devices[device_mac] = {
+                    "PhysAddress": device_mac,
+                    "Name": device_entry.name,
+                    "Active": False,
                     "last_seen": dt_util.utcnow() - timedelta(days=365),
-                    "device_model": None,
-                    "device_type": None,
-                    "type": None,
+                    "ModelName": None,
+                    "DeviceType": None,
                     "link_rate": None,
-                    "ip": None,
+                    "IPAddress": None,
                     "ssid": None,
                     "conn_ap_mac": None,
                     "allow_or_block": None,
@@ -99,19 +100,25 @@ class SwisscomInternetbox:
         new_devices = False
         devices = await self._get_devices() or []
         now = dt_util.utcnow()
+        year_ago = now - timedelta(days=365)
         
         for device in devices:
-            device_mac = dr.format_mac(device["Key"])
+            if device["DeviceType"] == "":
+                continue
+
+            device_mac = dr.format_mac(device["PhysAddress"])
 
             if not self.devices.get(device_mac):
                 new_devices = True
 
+            last_seen = self.devices.get(device_mac, {}).get("last_seen", year_ago)
             self.devices[device_mac] = device
-            self.devices[device_mac]["mac"] = device_mac
-            self.devices[device_mac]["last_seen"] = now
+            self.devices[device_mac]["PhysAddress"] = device_mac
+
+            self.devices[device_mac]["last_seen"] = now if device["Active"] else last_seen
             
         for device in self.devices.values():
-            device["active"] = (now - device["last_seen"]) <= self._consider_home            
+            device["Active"] = (now - device["last_seen"]) <= self._consider_home        
 
         return new_devices
     

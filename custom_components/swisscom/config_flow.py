@@ -1,20 +1,15 @@
 from typing import Any
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
+from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
+                                 CONF_VERIFY_SSL)
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-import voluptuous as vol
 
-from .const import (
-    CONF_CONSIDER_HOME,
-    DEFAULT_CONSIDER_HOME,
-    DEFAULT_HOST_NAME,
-    DEFAULT_NAME,
-    DEFAULT_SSL,
-    DEFAULT_VERIFY_SSL,
-    DOMAIN,
-)
+from .const import (CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME,
+                    DEFAULT_HOST_NAME, DEFAULT_NAME, DEFAULT_SSL,
+                    DEFAULT_VERIFY_SSL, DOMAIN)
 from .router import get_api
 
 
@@ -42,7 +37,7 @@ class OptionsFlowHandler(OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        if user_input is None:
+        if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
         
         settings_schema = vol.Schema({
@@ -52,7 +47,7 @@ class OptionsFlowHandler(OptionsFlow):
                     CONF_CONSIDER_HOME, 
                     DEFAULT_CONSIDER_HOME.total_seconds()
                 )
-            ): cv.int
+            ): int
         })
 
         return self.async_show_form(step_id="init", data_schema=settings_schema)
