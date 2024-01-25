@@ -1,13 +1,11 @@
 """The Simple Integration integration."""
 import asyncio
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+import voluptuous as vol
 
-from .const import DOMAIN
-
-PLATFORMS = ["sensor"]
+from .const import DOMAIN, PLATFORMS
 
 
 async def async_setup(hass: HomeAssistant, config: dict):

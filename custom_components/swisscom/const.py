@@ -1,5 +1,12 @@
 from datetime import timedelta
 
+from homeassistant.const import Platform
+
+PLATFORMS = [
+    Platform.DEVICE_TRACKER,
+    Platform.SENSOR,
+]
+
 DOMAIN="swisscom"
 
 DEFAULT_HOST_NAME = "internetbox.swisscom.ch"
@@ -17,5 +24,5 @@ KEY_ROUTER = "router"
 KEY_COORDINATOR = "coordinator"
 
 DEVICE_ICONS = {
-    
+
 }
