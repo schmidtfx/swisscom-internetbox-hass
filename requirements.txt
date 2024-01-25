@@ -1,0 +1,2 @@
+homeassistant==2024.1.5
+sc_inetbox_adapter==0.1.2
