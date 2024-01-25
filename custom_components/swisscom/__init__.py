@@ -26,6 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     router = SwisscomInternetbox(hass, entry)
     await router.async_setup()
 
+    hass.data.setdefault(DOMAIN, {})
+
     async def async_update_devices() -> bool:
         if router.track_devices:
             return await router.async_update_device_trackers()
