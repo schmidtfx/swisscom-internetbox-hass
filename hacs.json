@@ -1,0 +1,7 @@
+{
+    "name": "Swisscom Internetbox",
+    "domains": ["device_tracker"],
+    "country": ["CH"],
+    "homeassistant": "2025.1.5",
+    "iot_class": ["Local Polling"]
+}
