@@ -100,7 +100,14 @@ class SwisscomInternetbox:
         now = dt_util.utcnow()
         
         for device in devices:
-            print(device)
+            device_mac = dr.format_mac(device["PhysAddress"])
+
+            if not self.devices.get(device_mac):
+                new_devices = True
+
+            self.devices[device_mac] = device
+            self.devices[device_mac]["mac"] = device_mac
+            self.devices[device_mac]["last_seen"] = now
 
         return new_devices
     
