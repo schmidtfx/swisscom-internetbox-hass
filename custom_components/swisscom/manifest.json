@@ -5,6 +5,6 @@
     "config_flow": true,
     "iot_class": "local_polling",
     "loggers": ["pyswisscom"],
-    "requirements": ["sc-inetbox-adapter==0.1.2"],
+    "requirements": ["sc_inetbox_adapter==0.1.2"],
     "version": "0.0.1"
 }
