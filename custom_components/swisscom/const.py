@@ -7,7 +7,7 @@ PLATFORMS = [
     Platform.SENSOR,
 ]
 
-DOMAIN="swisscom"
+DOMAIN="swisscom_internetbox"
 
 DEFAULT_HOST_NAME = "internetbox.swisscom.ch"
 DEFAULT_NAME = "Swisscom InternetBox"

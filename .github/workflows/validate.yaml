@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: "actions/checkout@v4"
       - name: HACS validation
-        uses: "hacs/integration/action@main"
+        uses: "hacs/action@main"
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CATEGORY: "integration"
+          category: "integration"
