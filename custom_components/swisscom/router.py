@@ -33,16 +33,17 @@ class SwisscomInternetbox:
         
         self.track_devices = True
 
-        self.consider_home = entry.options.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME.total_seconds())
+        self._consider_home = entry.options.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME.total_seconds())
+        self._consider_home = timedelta(seconds=self._consider_home)
 
         self.api: InternetboxAdapter = None
         self.api_lock = asyncio.Lock()
 
         self.devices: dict[str, Any] = {}
 
-    def _setup(self) -> bool:
-        self.api = get_api(self._password, self._host, self._ssl, self._verify_ssl)
-        self._info = self._get_device_info()
+    async def _setup(self) -> bool:
+        self.api = await self.hass.async_add_executor_job(get_api, self._password, self._host, self._ssl, self._verify_ssl)
+        self._info = await self._get_device_info()
         if not self._info:
             return False
 
@@ -55,7 +56,7 @@ class SwisscomInternetbox:
     
     async def async_setup(self) -> bool:
         async with self.api_lock:
-            if not await self.hass.async_add_executor_job(self._setup):
+            if not await self._setup():
                 return False
             
         if self.track_devices:
@@ -100,7 +101,7 @@ class SwisscomInternetbox:
         now = dt_util.utcnow()
         
         for device in devices:
-            device_mac = dr.format_mac(device["PhysAddress"])
+            device_mac = dr.format_mac(device["Key"])
 
             if not self.devices.get(device_mac):
                 new_devices = True
@@ -108,6 +109,9 @@ class SwisscomInternetbox:
             self.devices[device_mac] = device
             self.devices[device_mac]["mac"] = device_mac
             self.devices[device_mac]["last_seen"] = now
+            
+        for device in self.devices.values():
+            device["active"] = (now - device["last_seen"]) <= self._consider_home            
 
         return new_devices
     

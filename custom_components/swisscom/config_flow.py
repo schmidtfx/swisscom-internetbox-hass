@@ -101,8 +101,6 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
         verify_ssl = user_input.get(CONF_VERIFY_SSL, self.placeholders[CONF_VERIFY_SSL])
         password = user_input[CONF_PASSWORD]
 
-        print(host, ssl, verify_ssl, password)
-
         try:
             api = await self.hass.async_add_executor_job(get_api, password, host, ssl, verify_ssl)
         except Exception as e:

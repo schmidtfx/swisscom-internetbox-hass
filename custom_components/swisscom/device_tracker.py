@@ -39,7 +39,7 @@ async def async_setup_entry(
             if mac in tracked:
                 continue
 
-            new_entities.append("")
+            new_entities.append(SwisscomInternetboxScannerEntity(coordinator, router, device))
             tracked.add(mac)
 
         async_add_entities(new_entities)
@@ -51,15 +51,29 @@ async def async_setup_entry(
 
 
 class SwisscomInternetboxScannerEntity(SwisscomInternetboxDeviceEntity, ScannerEntity):
+
+    _attr_has_entity_name = False
+
     def __init__(self, coordinator: DataUpdateCoordinator, router: SwisscomInternetbox, device: dict[str, Any]) -> None:
         super().__init__(coordinator, router, device)
         self._hostname = self.get_hostname()
-        self._icon = DEVICE_ICONS.get(device["device_type"], "mdi:help-network")
+        self._icon = DEVICE_ICONS.get(device["DeviceType"], "mdi:help-network")
         self._attr_name = self._device_name
 
     def get_hostname(self) -> str | None:
-        if (hostname := self._device["name"]) == "--":
+        if (hostname := self._device["Name"]) == "--":
             return None
         return hostname
+    
+    def async_update_device(self) -> None:
+        self._device = self._router.devices[self._mac]
+
+    @property
+    def is_connected(self) -> bool:
+        return self._is_active
+    
+    @property
+    def source_type(self) -> SourceType:
+        return SourceType.ROUTER
     
 
