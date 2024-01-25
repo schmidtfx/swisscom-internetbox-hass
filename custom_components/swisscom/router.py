@@ -96,11 +96,8 @@ class SwisscomInternetbox:
     
     async def async_update_device_trackers(self, now=None) -> bool:
         new_devices = False
-        devices = self._get_devices()
+        devices = await self._get_devices() or []
         now = dt_util.utcnow()
-
-        if devices is None:
-            return new_devices
         
         for device in devices:
             print(device)
