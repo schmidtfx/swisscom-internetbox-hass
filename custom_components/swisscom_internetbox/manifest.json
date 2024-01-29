@@ -1,11 +1,11 @@
 {
     "domain": "swisscom_internetbox",
     "name": "Swisscom Internetbox",
-    "documentation": "https://github.com/schmidtfx/swisscom-internetbox-hass",
-    "issue_tracker": "https://github.com/schmidtfx/swisscom-internetbox-hass/issues",
     "codeowners": ["@schmidtfx"],
     "config_flow": true,
+    "documentation": "https://github.com/schmidtfx/swisscom-internetbox-hass",
     "iot_class": "local_polling",
+    "issue_tracker": "https://github.com/schmidtfx/swisscom-internetbox-hass/issues",
     "loggers": ["pyswisscom"],
     "requirements": ["sc_inetbox_adapter==0.1.2"],
     "version": "0.1.0"
