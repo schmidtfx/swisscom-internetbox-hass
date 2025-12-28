@@ -1,25 +1,23 @@
 import asyncio
-import logging
 from datetime import timedelta
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_SSL,
-                                 CONF_VERIFY_SSL)
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 from sc_inetbox_adapter import InternetboxAdapter
 
-from .const import (CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME, DOMAIN,
-                    MODE_ROUTER)
+from .const import CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME, DOMAIN, MODE_ROUTER
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_api(password: str, host: str, ssl: bool, verify_ssl: bool):
     api: InternetboxAdapter = InternetboxAdapter(password)
-    res = api.create_session()
+    api.create_session()
     return api
 
 

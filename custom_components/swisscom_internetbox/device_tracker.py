@@ -51,7 +51,6 @@ async def async_setup_entry(
 
 
 class SwisscomInternetboxScannerEntity(SwisscomInternetboxDeviceEntity, ScannerEntity):
-
     _attr_has_entity_name = False
 
     def __init__(self, coordinator: DataUpdateCoordinator, router: SwisscomInternetbox, device: dict[str, Any]) -> None:
@@ -82,9 +81,7 @@ class SwisscomInternetboxScannerEntity(SwisscomInternetboxDeviceEntity, ScannerE
     
     @property
     def ip_address(self) -> str:
-        if "IPAddress" in self._device:
-            return self._device["IPAddress"]
-        return None
+        return self._device.get("IPAddress")
     
     @property
     def hostname(self) -> str:

@@ -1,2 +1,2 @@
-homeassistant==2025.2.4
+homeassistant>=2025.12.4
 sc_inetbox_adapter==0.1.2
