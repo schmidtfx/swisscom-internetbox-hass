@@ -46,44 +46,44 @@ class SwisscomBaseEntity(CoordinatorEntity):
         return True
 
 
-# class SwisscomInternetboxDeviceEntity(CoordinatorEntity):
-#     _attr_has_entity_name = True
+class SwisscomInternetboxDeviceEntity(CoordinatorEntity):
+    _attr_has_entity_name = True
 
-#     def __init__(self, coordinator: DataUpdateCoordinator, router: SwisscomInternetbox, device: dict):
-#         super().__init__(coordinator)
-#         self._router = router
-#         self._device = device
+    def __init__(self, coordinator: DataUpdateCoordinator, router: SwisscomInternetbox, device: dict):
+        super().__init__(coordinator)
+        self._router = router
+        self._device = device
 
-#         self._attr_unique_id = self._mac
-#         self._attr_device_info = dr.DeviceInfo(
-#             connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
-#             default_name=self._device_name,
-#             default_model=device["DeviceType"],
-#             via_device=(DOMAIN, router.unique_id),
-#         )
+        self._attr_unique_id = self._mac
+        self._attr_device_info = dr.DeviceInfo(
+            connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
+            default_name=self._device_name,
+            default_model=device["DeviceType"],
+            via_device=(DOMAIN, router.unique_id),
+        )
 
-#     @abstractmethod
-#     @callback
-#     def async_update_device(self) -> None:
-#         pass
+    @abstractmethod
+    @callback
+    def async_update_device(self) -> None:
+        pass
 
-#     @callback
-#     def _handle_coordinator_update(self) -> None:
-#         self.async_update_device()
-#         super()._handle_coordinator_update()
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.async_update_device()
+        super()._handle_coordinator_update()
     
-#     @property
-#     def _device_name(self):
-#         name = self._device["Name"]
-#         if not name or name == "--":
-#             return self._device["Key"]
-#         return name
+    @property
+    def _device_name(self):
+        name = self._device["Name"]
+        if not name or name == "--":
+            return self._device["Key"]
+        return name
     
-#     @property
-#     def _is_active(self):
-#         return self._device["Active"]
+    @property
+    def _is_active(self):
+        return self._device["Active"]
     
-#     @property
-#     def _mac(self):
-#         return self._device["PhysAddress"]
+    @property
+    def _mac(self):
+        return self._device["PhysAddress"]
         
