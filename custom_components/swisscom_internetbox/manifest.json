@@ -8,5 +8,5 @@
     "issue_tracker": "https://github.com/schmidtfx/swisscom-internetbox-hass/issues",
     "loggers": ["pyswisscom"],
     "requirements": ["sc_inetbox_adapter==0.1.2"],
-    "version": "0.2.40"
+    "version": "0.2.0"
 }
