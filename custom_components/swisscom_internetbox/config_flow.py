@@ -1,22 +1,14 @@
+from __future__ import annotations
 from typing import Any
 
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL
-from homeassistant.core import callback
-from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from homeassistant.helpers import config_validation as cv
+from homeassistant.core import callback
 
-from .const import (
-    CONF_CONSIDER_HOME,
-    DEFAULT_CONSIDER_HOME,
-    DEFAULT_HOST_NAME,
-    DEFAULT_NAME,
-    DEFAULT_SSL,
-    DEFAULT_VERIFY_SSL,
-    DOMAIN,
-)
-from .router import get_api
-
+from .const import DOMAIN, CONF_HOST, CONF_PASSWORD, CONF_SSL, CONF_VERIFY_SSL, DEFAULT_HOST_NAME, DEFAULT_SSL, DEFAULT_VERIFY_SSL, CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME, DEFAULT_NAME
+from .api import InternetBoxClient
 
 def _discovery_schema_with_defaults(discovery_info):
     return vol.Schema(_ordered_shared_schema(discovery_info))
@@ -29,7 +21,6 @@ def _user_schema_with_defaults(user_input):
     user_schema.update(_ordered_shared_schema(user_input))
     return vol.Schema(user_schema)
 
-
 def _ordered_shared_schema(schema_input):
     return {
         vol.Required(CONF_PASSWORD, default=schema_input.get(CONF_PASSWORD, "")): cv.string,
@@ -37,9 +28,10 @@ def _ordered_shared_schema(schema_input):
         vol.Optional(CONF_VERIFY_SSL, default=schema_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)): cv.boolean,
     }
 
-class OptionsFlowHandler(OptionsFlow):
+
+class OptionsFlowHandler(config_entries.ConfigFlow):
     def __init__(self, config_entry: ConfigEntry):
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
@@ -48,7 +40,7 @@ class OptionsFlowHandler(OptionsFlow):
         settings_schema = vol.Schema({
             vol.Optional(
                 CONF_CONSIDER_HOME, 
-                default=self.config_entry.options.get(
+                default=self._config_entry.options.get(
                     CONF_CONSIDER_HOME, 
                     DEFAULT_CONSIDER_HOME.total_seconds()
                 )
@@ -101,11 +93,7 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
         verify_ssl = user_input.get(CONF_VERIFY_SSL, self.placeholders[CONF_VERIFY_SSL])
         password = user_input[CONF_PASSWORD]
 
-        try:
-            api = await self.hass.async_add_executor_job(get_api, password, host, ssl, verify_ssl)
-        except Exception as e:
-            errors["base"] = "config"
-            return await self._show_setup_form(user_input, errors)
+        client = InternetBoxClient(hass=self.hass, host=host, password=password, ssl=ssl, verify_ssl=verify_ssl)
 
         config_data = {
             CONF_PASSWORD: password,
@@ -114,9 +102,13 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
             CONF_VERIFY_SSL: verify_ssl,
         }
 
-        info = await self.hass.async_add_executor_job(api.get_device_info)
-        if info is None:
-            errors["base"] = "info"
+        try:
+            info = await client.async_get_device_info()
+            if info is None:
+                errors["base"] = info
+                return await self._show_setup_form(user_input, errors)
+        except Exception as ex:
+            errors["base"] = "Could not login to InternetBox"
             return await self._show_setup_form(user_input, errors)
 
         await self.async_set_unique_id(info["SerialNumber"], raise_on_progress=False)

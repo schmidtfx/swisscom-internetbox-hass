@@ -1,42 +1,78 @@
-[project]
-name = "Swisscom"
-dynamic = ["version"]
-readme = "README.md"
-requires-python = ">=3.13"
-classifiers = [
-    "Programming Language :: Python :: 3",
-]
-
-[project.urls]
-Homepage = "https://github.com/schmidtfx/swisscom-internetbox-hass"
-
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages=["custom_components"]
+# NOTE:
+# For HACS custom_components repos, we usually don't publish a wheel.
+# This pyproject is mainly for tooling (lint/test/type-check).
+
+[project]
+name = "swisscom-internetbox"
+version = "0.1.0"
+description = "Home Assistant custom integration for the Swisscom InternetBox"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Your Name" }]
+
+# Runtime deps are managed by Home Assistant (manifest.json), not pip.
+# Keep this empty on purpose.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "pytest-homeassistant-custom-component>=0.13.0",
+  "ruff>=0.6.0",
+  "mypy>=1.10.0",
+  "types-requests",
+  "sc_inetbox_adapter==0.1.2"
+]
 
 [tool.pytest.ini_options]
-pythonpath=["."]
+testpaths = ["tests"]
+addopts = "-q"
 asyncio_mode = "auto"
-testpaths = [
-    "tests",
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["custom_components", "tests"]
+fix = true
+
+[tool.ruff.lint]
+# Reasonable defaults for HA custom integrations
+select = [
+  "E", "F", "W",   # pycodestyle/pyflakes
+  "I",            # isort (import sorting)
+  "B",            # flake8-bugbear
+  "UP",           # pyupgrade
+  "SIM",          # flake8-simplify
+  "RUF",          # ruff-specific
+]
+ignore = [
+  "E501",  # let formatter / line-length handle it
 ]
 
-[tool.coverage.run]
-source = [
-    "custom_components.swisscom_internetbox"
-]
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # allow assert in tests
 
-[tool.coverage.report]
-show_missing = "true"
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+strict_optional = true
 
-[tool.black]
-target-version = ["py311"]
+# Home Assistant imports are available at runtime in HA but not necessarily in local env.
+# These settings reduce friction for contributors.
+ignore_missing_imports = true
 
-[tool.isort]
-# https://github.com/PyCQA/isort/wiki/isort-Settings
-profile = "black"
-# will group `import x` and `from x import` of the same module.
-force_sort_within_sections = true
+[tool.setuptools]
+# We don't package as a library; keep it simple.
+include-package-data = true

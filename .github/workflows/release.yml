@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag matches manifest version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          VERSION_FROM_TAG="${TAG#v}"
+
+          echo "Tag: $TAG"
+          echo "Version from tag: $VERSION_FROM_TAG"
+
+          MANIFEST_PATH="custom_components/ekz_tariffs/manifest.json"
+          if [ ! -f "$MANIFEST_PATH" ]; then
+            echo "::error::Manifest not found at $MANIFEST_PATH"
+            exit 1
+          fi
+
+          MANIFEST_VERSION="$(python - <<'PY'
+          import json
+          with open("custom_components/ekz_tariffs/manifest.json", "r", encoding="utf-8") as f:
+              data = json.load(f)
+          v = data.get("version")
+          if not v:
+              raise SystemExit("manifest.json missing required 'version' field")
+          print(v)
+          PY
+          )"
+
+          echo "Manifest version: $MANIFEST_VERSION"
+
+          if [ "$MANIFEST_VERSION" != "$VERSION_FROM_TAG" ]; then
+            echo "::error::Tag version ($VERSION_FROM_TAG) does not match manifest.json version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
