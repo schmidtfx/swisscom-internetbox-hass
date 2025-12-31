@@ -27,7 +27,8 @@ jobs:
             pytest-homeassistant-custom-component \
             ruff \
             mypy \
-            types-requests
+            types-requests \
+            "sc_inetbox_adapter==0.1.2"
 
       - name: Ruff (lint)
         run: ruff check .
