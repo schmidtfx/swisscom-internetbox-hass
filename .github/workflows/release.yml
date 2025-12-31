@@ -29,7 +29,7 @@ jobs:
           echo "Tag: $TAG"
           echo "Version from tag: $VERSION_FROM_TAG"
 
-          MANIFEST_PATH="custom_components/ekz_tariffs/manifest.json"
+          MANIFEST_PATH="custom_components/swisscom_internetbox/manifest.json"
           if [ ! -f "$MANIFEST_PATH" ]; then
             echo "::error::Manifest not found at $MANIFEST_PATH"
             exit 1
@@ -37,7 +37,7 @@ jobs:
 
           MANIFEST_VERSION="$(python - <<'PY'
           import json
-          with open("custom_components/ekz_tariffs/manifest.json", "r", encoding="utf-8") as f:
+          with open("custom_components/swisscom_internetbox/manifest.json", "r", encoding="utf-8") as f:
               data = json.load(f)
           v = data.get("version")
           if not v:
