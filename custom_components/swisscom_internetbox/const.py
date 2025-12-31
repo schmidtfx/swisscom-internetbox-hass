@@ -1,5 +1,6 @@
-from homeassistant.const import Platform
 import datetime as dt
+
+from homeassistant.const import Platform
 
 DOMAIN = "swisscom_internetbox"
 PLATFORMS = [Platform.DEVICE_TRACKER, Platform.SENSOR]

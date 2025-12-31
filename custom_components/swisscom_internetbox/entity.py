@@ -1,18 +1,24 @@
 from abc import abstractmethod
 
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers import device_registry as dr
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import InternetBoxDataCoordinator
 from .api import HostEntry
 from .const import DOMAIN
+from .coordinator import InternetBoxDataCoordinator
+
 
 class InternetBoxDeviceEntity(CoordinatorEntity[InternetBoxDataCoordinator]):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: InternetBoxDataCoordinator, entry: ConfigEntry, device: HostEntry):
+    def __init__(
+        self,
+        coordinator: InternetBoxDataCoordinator,
+        entry: ConfigEntry,
+        device: HostEntry,
+    ):
         super().__init__(coordinator)
 
         self._device = device
@@ -40,11 +46,11 @@ class InternetBoxDeviceEntity(CoordinatorEntity[InternetBoxDataCoordinator]):
         if not name or name == "--":
             return self._device.ip
         return name
-    
+
     @property
     def _is_active(self):
         return self._device.active
-    
+
     @property
     def _mac(self):
         return self._device.mac

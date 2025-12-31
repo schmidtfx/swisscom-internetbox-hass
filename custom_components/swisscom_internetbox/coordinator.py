@@ -1,16 +1,17 @@
 from __future__ import annotations
-import logging
 
 import datetime as dt
+import logging
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from sc_inetbox_adapter.errors import NoActiveSessionException
-
 
 from .api import InternetBoxClient
 from .const import DEFAULT_POLL_INTERVAL_SECONDS, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class InternetBoxDataCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, client: InternetBoxClient):
@@ -35,9 +36,8 @@ class InternetBoxDataCoordinator(DataUpdateCoordinator[dict]):
                 "wan_info": wan_info,
                 "dsl_info": dsl_info,
             }
-        except NoActiveSessionException:
+        except NoActiveSessionException as err:
             await self._client.async_close()
-            raise UpdateFailed("Session expired; will re-authenticate")
+            raise UpdateFailed("Session expired; will re-authenticate") from err
         except Exception as ex:
             raise UpdateFailed(str(ex)) from ex
-        
