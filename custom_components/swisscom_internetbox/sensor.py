@@ -9,7 +9,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -31,17 +30,9 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         key="online_devices", name="Online devices", icon="mdi:lan-check"
     ),
     InternetBoxSensorDescription(
-        key="sw_version",
-        name="Software version",
-        icon="mdi:router-wireless",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        key="sw_version", name="Software version", icon="mdi:router-wireless"
     ),
-    InternetBoxSensorDescription(
-        key="model",
-        name="Model",
-        icon="mdi:router",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
+    InternetBoxSensorDescription(key="model", name="Model", icon="mdi:router"),
     InternetBoxSensorDescription(
         key="uptime",
         name="Uptime",
@@ -67,12 +58,7 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     InternetBoxSensorDescription(key="link_state", name="Link state", icon="mdi:link"),
-    InternetBoxSensorDescription(
-        key="link_type",
-        name="Link type",
-        icon="mdi:link",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
+    InternetBoxSensorDescription(key="link_type", name="Link type", icon="mdi:link"),
 )
 
 
