@@ -132,14 +132,11 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
         }
 
         try:
-            print("GET INFO")
             info = await client.async_get_device_info()
             if info is None:
-                print("NO INFO")
                 errors["base"] = info
                 return await self._show_setup_form(user_input, errors)
         except Exception as ex:
-            print(ex)
             errors["base"] = "Could not login to InternetBox"
             return await self._show_setup_form(user_input, errors)
 

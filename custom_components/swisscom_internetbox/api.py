@@ -119,3 +119,7 @@ class InternetBoxClient(InternetboxAdapter):
             return response.json()
 
         return await self._hass.async_add_executor_job(_get)
+    
+    @property
+    def host(self) -> str:
+        return self._host
