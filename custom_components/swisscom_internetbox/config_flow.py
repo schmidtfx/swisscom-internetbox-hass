@@ -136,7 +136,7 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
             if info is None:
                 errors["base"] = info
                 return await self._show_setup_form(user_input, errors)
-        except Exception as ex:
+        except Exception:
             errors["base"] = "Could not login to InternetBox"
             return await self._show_setup_form(user_input, errors)
 

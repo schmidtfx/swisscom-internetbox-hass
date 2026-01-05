@@ -11,7 +11,6 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -32,9 +31,17 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         key="online_devices", name="Online devices", icon="mdi:lan-check"
     ),
     InternetBoxSensorDescription(
-        key="sw_version", name="Software version", icon="mdi:router-wireless", entity_category=EntityCategory.DIAGNOSTIC,
+        key="sw_version",
+        name="Software version",
+        icon="mdi:router-wireless",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    InternetBoxSensorDescription(key="model", name="Model", icon="mdi:router", entity_category=EntityCategory.DIAGNOSTIC,),
+    InternetBoxSensorDescription(
+        key="model",
+        name="Model",
+        icon="mdi:router",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
     InternetBoxSensorDescription(
         key="uptime",
         name="Uptime",
@@ -44,7 +51,10 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
     InternetBoxSensorDescription(
-        key="external_ip", name="External IP", icon="mdi:ip-network", entity_category=EntityCategory.DIAGNOSTIC,
+        key="external_ip",
+        name="External IP",
+        icon="mdi:ip-network",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     InternetBoxSensorDescription(
         key="wan_rx",
@@ -63,7 +73,12 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         entity_registry_enabled_default=False,
     ),
     InternetBoxSensorDescription(key="link_state", name="Link state", icon="mdi:link"),
-    InternetBoxSensorDescription(key="link_type", name="Link type", icon="mdi:link", entity_category=EntityCategory.DIAGNOSTIC),
+    InternetBoxSensorDescription(
+        key="link_type",
+        name="Link type",
+        icon="mdi:link",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 )
 
 
@@ -90,7 +105,7 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        
+
         # Group all sensors under the main router device
         self._attr_device_info = self._get_device_info(entry_id)
 
@@ -98,14 +113,14 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
         """Create device info for the main router to group all sensors."""
         data = self.coordinator.data or {}
         device_info = data.get("device_info") or {}
-        
+
         # Use the router's serial number or MAC as identifier if available
         serial_number = device_info.get("SerialNumber")
         mac_address = device_info.get("MACAddress")
-        
+
         # Create device identifier
         device_identifier = serial_number or mac_address or entry_id
-        
+
         return {
             "identifiers": {(DOMAIN, device_identifier)},
             "name": device_info.get("ModelName", "Swisscom InternetBox"),
