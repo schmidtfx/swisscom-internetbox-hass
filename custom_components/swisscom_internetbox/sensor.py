@@ -25,10 +25,16 @@ class InternetBoxSensorDescription(SensorEntityDescription):
 
 SENSORS: tuple[InternetBoxSensorDescription, ...] = (
     InternetBoxSensorDescription(
-        key="connected_devices", name="Connected devices", icon="mdi:lan-connect"
+        key="connected_devices",
+        name="Connected devices",
+        icon="mdi:lan-connect",
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     InternetBoxSensorDescription(
-        key="online_devices", name="Online devices", icon="mdi:lan-check"
+        key="online_devices",
+        name="Online devices",
+        icon="mdi:lan-check",
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     InternetBoxSensorDescription(
         key="sw_version",
