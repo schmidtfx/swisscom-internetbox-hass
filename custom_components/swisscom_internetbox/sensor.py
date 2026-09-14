@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -66,16 +66,18 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         key="wan_rx",
         name="WAN received",
         icon="mdi:download",
-        unit_of_measurement="B",
-        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         entity_registry_enabled_default=False,
     ),
     InternetBoxSensorDescription(
         key="wan_tx",
         name="WAN sent",
         icon="mdi:upload",
-        unit_of_measurement="B",
-        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         entity_registry_enabled_default=False,
     ),
     InternetBoxSensorDescription(key="link_state", name="Link state", icon="mdi:link"),
@@ -142,7 +144,8 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
         devices = data.get("devices") or []
         device_info = data.get("device_info") or {}
         wan_info = data.get("wan_info") or {}
-        dsl_info = data.get("dsl_info") or {}
+        wan_data = wan_info.get("data") or {}
+        wan_stats = data.get("wan_stats") or {}
 
         if self.entity_description.key == "connected_devices":
             return len(devices)
@@ -164,15 +167,15 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
             return device_info.get("ExternalIPAddress")
 
         if self.entity_description.key == "wan_rx":
-            return dsl_info.get("status", {}).get("stats", {}).get("BytesReceived")
+            return wan_stats.get("rx_bytes")
 
         if self.entity_description.key == "wan_tx":
-            return dsl_info.get("status", {}).get("stats", {}).get("BytesSent")
+            return wan_stats.get("tx_bytes")
 
         if self.entity_description.key == "link_state":
-            return wan_info.get("data").get("LinkState")
+            return wan_data.get("LinkState")
 
         if self.entity_description.key == "link_type":
-            return wan_info.get("data").get("LinkType")
+            return wan_data.get("LinkType")
 
         return None

@@ -28,13 +28,13 @@ class InternetBoxDataCoordinator(DataUpdateCoordinator[dict]):
             devices = await self._client.async_get_hosts()
             info = await self._client.async_get_device_info()
             wan_info = await self._client.async_get_wan_info()
-            dsl_info = await self._client.async_get_dsl_info()
+            wan_stats = await self._client.async_get_wan_stats()
 
             return {
                 "devices": devices,
                 "device_info": info,
                 "wan_info": wan_info,
-                "dsl_info": dsl_info,
+                "wan_stats": wan_stats,
             }
         except NoActiveSessionException as err:
             await self._client.async_close()

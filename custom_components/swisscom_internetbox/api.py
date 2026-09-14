@@ -1,12 +1,29 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from sc_inetbox_adapter import InternetboxAdapter
 from sc_inetbox_adapter.errors import NoActiveSessionException, SwisscomInetboxException
+
+_LOGGER = logging.getLogger(__name__)
+
+# The WAN byte counters live behind different sysbus objects depending on the
+# physical link. On fibre (InternetBox 5 / GPON) the uplink is veip0; dsl0 only
+# exists on DSL lines.
+#
+# Probing an InternetBox 5 showed that of its 83 NeMo interfaces only two allow
+# the webui role to call getNetDevStats: veip0 (the WAN uplink) and bridge (the
+# LAN side). Everything else answers HTTP 401. Note that bridge is deliberately
+# not listed here: its counters are the WAN's mirrored (what the WAN receives,
+# the bridge transmits), so using it would report download as upload.
+WAN_STATS_PATHS: tuple[str, ...] = (
+    "/sysbus/NeMo/Intf/veip0:getNetDevStats",
+    "/sysbus/NeMo/Intf/dsl0:getDSLChannelStats",
+)
 
 
 @dataclass
@@ -16,6 +33,62 @@ class HostEntry:
     hostname: str | None
     active: bool | None
     type: str | None
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _describe_error(payload: Any) -> str | None:
+    """Return why a sysbus call carried no counters, for logging.
+
+    A rejected call still answers HTTP 200; the reason is in the ``errors``
+    array (e.g. 196618 "Object or parameter not found" for an object that does
+    not exist on this link, or 13 "Permission denied" when the webui role may
+    not read it).
+    """
+    if not isinstance(payload, dict):
+        return "unexpected reply"
+
+    errors = payload.get("errors")
+    if isinstance(errors, list) and errors and isinstance(errors[0], dict):
+        first = errors[0]
+        return (
+            f"error {first.get('error')}: {first.get('description')}"
+            f" ({first.get('info')})"
+        )
+    if errors:
+        return f"error: {errors}"
+    return "no counters in reply"
+
+
+def _extract_wan_counters(payload: Any) -> dict[str, int | None] | None:
+    """Normalise a getDSLChannelStats/getNetDevStats reply to rx/tx bytes.
+
+    Returns None when the reply carries no usable counters, which is what a
+    fibre box answers for the dsl0 object.
+    """
+    if not isinstance(payload, dict):
+        return None
+
+    status = payload.get("status")
+    if not isinstance(status, dict):
+        return None
+
+    # getDSLChannelStats nests the counters, getNetDevStats reports them flat.
+    stats = status.get("stats")
+    if isinstance(stats, dict):
+        status = stats
+
+    rx = _as_int(status.get("BytesReceived", status.get("RxBytes")))
+    tx = _as_int(status.get("BytesSent", status.get("TxBytes")))
+    if rx is None and tx is None:
+        return None
+
+    return {"rx_bytes": rx, "tx_bytes": tx}
 
 
 class InternetBoxClient(InternetboxAdapter):
@@ -32,6 +105,7 @@ class InternetBoxClient(InternetboxAdapter):
         )
         self._hass = hass
         self._session_ready = False
+        self._wan_stats_path: str | None = None
 
     async def async_ensure_session(self) -> None:
         if self._session_ready:
@@ -107,16 +181,52 @@ class InternetBoxClient(InternetboxAdapter):
 
         return await self._hass.async_add_executor_job(_get)
 
-    async def async_get_dsl_info(self) -> dict[str, Any]:
+    async def async_get_wan_stats(self) -> dict[str, int | None]:
+        """Return the WAN byte counters, whatever the physical link is.
+
+        Probes the known sysbus objects once and remembers the one that
+        answered, so the regular poll stays at a single request.
+        """
         await self.async_ensure_session()
 
-        def _get():
+        def _call(path: str) -> dict[str, int | None] | None:
             headers = self._add_auth_header()
             payload = json.dumps({"parameters": {}})
-            response = self._send_request(
-                "/sysbus/NeMo/Intf/dsl0:getDSLChannelStats", payload, headers
-            )
-            return response.json()
+            response = self._send_request(path, payload, headers)
+            if response.status_code != 200:
+                _LOGGER.debug("%s: HTTP %s", path, response.status_code)
+                return None
+            try:
+                reply = response.json()
+            except ValueError:
+                _LOGGER.debug("%s: reply was not JSON", path)
+                return None
+
+            counters = _extract_wan_counters(reply)
+            if counters is None:
+                _LOGGER.debug("%s: %s", path, _describe_error(reply))
+            return counters
+
+        def _get() -> dict[str, int | None]:
+            cached = self._wan_stats_path
+            paths = WAN_STATS_PATHS
+            if cached:
+                paths = (cached, *(p for p in WAN_STATS_PATHS if p != cached))
+
+            for path in paths:
+                counters = _call(path)
+                if counters is None:
+                    continue
+                if path != cached:
+                    _LOGGER.debug("Reading WAN counters from %s", path)
+                    self._wan_stats_path = path
+                return counters
+
+            # Nothing answered; forget the cached object so a link change
+            # (DSL <-> fibre) is picked up on the next poll.
+            _LOGGER.debug("No WAN byte counters found, tried: %s", ", ".join(paths))
+            self._wan_stats_path = None
+            return {}
 
         return await self._hass.async_add_executor_job(_get)
 
