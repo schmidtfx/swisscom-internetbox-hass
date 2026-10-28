@@ -5,11 +5,22 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import requests
+import urllib3
 from homeassistant.core import HomeAssistant
 from sc_inetbox_adapter import InternetboxAdapter
 from sc_inetbox_adapter.errors import NoActiveSessionException, SwisscomInetboxException
 
 _LOGGER = logging.getLogger(__name__)
+
+# sc_inetbox_adapter 0.1.2 passes no timeout to requests, so a box that accepts
+# the connection but never replies parks an executor thread forever. Four
+# blocking calls every poll would eventually drain Home Assistant's shared
+# pool, so the transport is overridden below to always carry a deadline.
+# (connect, read) in seconds.
+DEFAULT_REQUEST_TIMEOUT: tuple[float, float] = (5.0, 10.0)
+
+SAH_CONTENT_TYPE = "application/x-sah-ws-4-call+json"
 
 # The WAN byte counters live behind different sysbus objects depending on the
 # physical link. On fibre (InternetBox 5 / GPON) the uplink is veip0; dsl0 only
@@ -107,6 +118,55 @@ class InternetBoxClient(InternetboxAdapter):
         self._session_ready = False
         self._wan_stats_path: str | None = None
 
+    # -- transport -------------------------------------------------------
+    #
+    # The methods below replace the adapter's own implementations. They exist
+    # for two reasons:
+    #
+    # * the adapter never passes a ``timeout`` (see DEFAULT_REQUEST_TIMEOUT);
+    # * the adapter's header helpers use ``headers={}`` as a default, so a
+    #   single dict object is shared by every adapter instance ever created.
+    #   ``_add_auth_header`` writes ``X-Context`` into it and hands the same
+    #   object back to every caller, so with two config entries polling on
+    #   different executor threads one box's request can go out carrying the
+    #   other box's token.
+    #
+    # Everything here therefore builds a fresh dict per request and never
+    # mutates what it was given, which also keeps the adapter's shared
+    # defaults clean when inherited methods pass them down.
+
+    def _add_auth_header(self, headers: dict[str, str] | None = None) -> dict[str, str]:
+        if not self._auth_token:
+            raise NoActiveSessionException
+        return {**(headers or {}), "X-Context": self._auth_token}
+
+    def _send_ws_request(
+        self, payload: str, headers: dict[str, str] | None = None
+    ) -> requests.Response:
+        return self._send_request("/ws", payload, headers)
+
+    def _send_auth_ws_request(
+        self, payload: str, headers: dict[str, str] | None = None
+    ) -> requests.Response:
+        return self._send_ws_request(payload, self._add_auth_header(headers))
+
+    def _send_request(
+        self, path: str, payload: str, headers: dict[str, str] | None = None
+    ) -> requests.Response:
+        url = f"{self._protocol}://{self._host}{path}"
+        request_headers = {**(headers or {}), "Content-Type": SAH_CONTENT_TYPE}
+        if not self._verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        return self._session.post(
+            url,
+            headers=request_headers,
+            data=payload,
+            verify=self._verify_ssl,
+            timeout=DEFAULT_REQUEST_TIMEOUT,
+        )
+
+    # -- session ---------------------------------------------------------
+
     async def async_ensure_session(self) -> None:
         if self._session_ready:
             return
@@ -120,11 +180,26 @@ class InternetBoxClient(InternetboxAdapter):
         self._session_ready = True
 
     async def async_close(self) -> None:
+        """Release the session on the box, best effort.
+
+        The usual reason a session dies is that the box became unreachable, so
+        the logout POST is itself likely to fail. Dropping the local session
+        state matters more than the logout succeeding: if ``_session_ready``
+        stays set, ``async_ensure_session`` keeps early-returning and every
+        later poll reuses a token the box has already forgotten, which only a
+        Home Assistant restart would recover from.
+        """
         if not self._session_ready:
+            self._auth_token = None
             return
 
-        await self._hass.async_add_executor_job(self.logout_session)
-        self._session_ready = False
+        try:
+            await self._hass.async_add_executor_job(self.logout_session)
+        except Exception:  # teardown must never raise
+            _LOGGER.debug("Logout failed; dropping the session anyway", exc_info=True)
+        finally:
+            self._session_ready = False
+            self._auth_token = None
 
     async def async_get_hosts(self) -> list[HostEntry]:
         await self.async_ensure_session()
