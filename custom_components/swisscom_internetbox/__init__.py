@@ -29,6 +29,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
+    # Reload the entry when the options (e.g. consider_home) change, so the
+    # new settings are actually picked up by the platforms.
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -36,7 +40,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        coordinator: InternetBoxDataCoordinator | None = hass.data.get(DOMAIN, {}).pop(
+            entry.entry_id, None
+        )
+        if coordinator is not None:
+            # The box only holds a bounded number of webui contexts, so an
+            # abandoned session is a real cost on every reload. async_close()
+            # is best effort and never raises, so unload cannot fail here.
+            await coordinator.client.async_close()
     return unload_ok
 
 

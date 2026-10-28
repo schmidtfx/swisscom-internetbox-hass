@@ -23,6 +23,11 @@ class InternetBoxDataCoordinator(DataUpdateCoordinator[dict]):
         )
         self._client = client
 
+    @property
+    def client(self) -> InternetBoxClient:
+        """The API client, so entry teardown can release the session."""
+        return self._client
+
     async def _async_update_data(self) -> dict:
         try:
             devices = await self._client.async_get_hosts()
