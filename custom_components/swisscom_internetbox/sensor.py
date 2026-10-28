@@ -10,11 +10,12 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory, UnitOfInformation
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import CONF_HOST, CONF_SSL, DEFAULT_NAME, DEFAULT_SSL, DOMAIN
 from .coordinator import InternetBoxDataCoordinator
 
 
@@ -90,14 +91,72 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
 )
 
 
+def router_identifier(entry: ConfigEntry) -> str:
+    """Return the device registry identifier of the router itself.
+
+    This must match the ``via_device`` used by the tracked device entities,
+    which is built from the config entry's unique id (the box serial number).
+    """
+    return entry.unique_id or entry.entry_id
+
+
+def _configuration_url(entry: ConfigEntry) -> str | None:
+    """Build the "Visit device" URL from the entry, honouring the SSL setting."""
+    host = entry.data.get(CONF_HOST)
+    if not host:
+        return None
+    scheme = "https" if entry.data.get(CONF_SSL, DEFAULT_SSL) else "http"
+    return f"{scheme}://{host}"
+
+
+def router_device_info(entry: ConfigEntry, data: dict | None) -> dict:
+    """Describe the router device from the latest coordinator data."""
+    device_info = (data or {}).get("device_info") or {}
+    model = device_info.get("ModelName")
+
+    return {
+        "identifiers": {(DOMAIN, router_identifier(entry))},
+        "name": model or DEFAULT_NAME,
+        "manufacturer": "Swisscom",
+        "model": model or "InternetBox",
+        "sw_version": device_info.get("SoftwareVersion"),
+        "configuration_url": _configuration_url(entry),
+    }
+
+
+@callback
+def async_update_router_device(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: InternetBoxDataCoordinator,
+) -> None:
+    """Create or refresh the router device entry.
+
+    Called again on every coordinator update so that a firmware upgrade is
+    reflected in the device registry without reloading the config entry.
+    """
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        **router_device_info(entry, coordinator.data),
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: InternetBoxDataCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    async_update_router_device(hass, entry, coordinator)
+    entry.async_on_unload(
+        coordinator.async_add_listener(
+            lambda: async_update_router_device(hass, entry, coordinator)
+        )
+    )
+
     async_add_entities(
-        [InternetBoxSensor(coordinator, entry.entry_id, desc) for desc in SENSORS]
+        [InternetBoxSensor(coordinator, entry, desc) for desc in SENSORS]
     )
 
 
@@ -107,36 +166,19 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
     def __init__(
         self,
         coordinator: InternetBoxDataCoordinator,
-        entry_id: str,
+        entry: ConfigEntry,
         description: InternetBoxSensorDescription,
     ):
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = f"{entry_id}_{description.key}"
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
 
-        # Group all sensors under the main router device
-        self._attr_device_info = self._get_device_info(entry_id)
-
-    def _get_device_info(self, entry_id: str):
-        """Create device info for the main router to group all sensors."""
-        data = self.coordinator.data or {}
-        device_info = data.get("device_info") or {}
-
-        # Use the router's serial number or MAC as identifier if available
-        serial_number = device_info.get("SerialNumber")
-        mac_address = device_info.get("MACAddress")
-
-        # Create device identifier
-        device_identifier = serial_number or mac_address or entry_id
-
-        return {
-            "identifiers": {(DOMAIN, device_identifier)},
-            "name": device_info.get("ModelName", "Swisscom InternetBox"),
-            "manufacturer": "Swisscom",
-            "model": device_info.get("ModelName", "InternetBox"),
-            "sw_version": device_info.get("SoftwareVersion"),
-            "configuration_url": f"http://{self.coordinator._client.host}",
-        }
+        # Group all sensors under the main router device. Only the identifier
+        # is pinned here; the device's details are owned (and kept fresh) by
+        # async_update_router_device, so nothing goes stale on this entity.
+        self._attr_device_info = dr.DeviceInfo(
+            identifiers={(DOMAIN, router_identifier(entry))}
+        )
 
     @property
     def native_value(self):
@@ -151,8 +193,8 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
             return len(devices)
 
         if self.entity_description.key == "online_devices":
-            actives = [d for d in devices if d.active]
-            return len(actives) if actives else None
+            # 0 is a valid measurement ("nobody home"); never report unknown.
+            return sum(1 for d in devices if d.active)
 
         if self.entity_description.key == "sw_version":
             return device_info.get("SoftwareVersion")
