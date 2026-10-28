@@ -2,10 +2,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.swisscom_internetbox.api import (
+    DEFAULT_REQUEST_TIMEOUT,
     InternetBoxClient,
     _describe_error,
     _extract_wan_counters,
 )
+from sc_inetbox_adapter import InternetboxAdapter
+from sc_inetbox_adapter.errors import NoActiveSessionException
 
 # What an InternetBox 5 on fibre answers for the dsl0 object: the call itself
 # succeeds, but there is no DSL channel to report on.
@@ -169,3 +172,88 @@ async def test_wan_stats_empty_when_nothing_answers(hass) -> None:
     ):
         assert await client.async_get_wan_stats() == {}
     assert client._wan_stats_path is None
+
+
+def _posting_client(hass, token: str = "TOKEN") -> InternetBoxClient:
+    """A client whose transport is stubbed out at the requests.Session level."""
+    client = InternetBoxClient(hass, "my-host", "my-password")
+    client._session_ready = True
+    client._auth_token = token
+    client._session = MagicMock()
+    client._session.post.return_value = _response({})
+    return client
+
+
+def test_every_request_carries_a_timeout(hass) -> None:
+    """A box that accepts the connection but never replies must not park a
+    thread forever: without a deadline, four blocking calls per 30s poll can
+    drain Home Assistant's shared executor pool."""
+    client = _posting_client(hass)
+
+    client._send_request("/sysbus/NMC:getWANStatus", "{}", {})
+
+    assert client._session.post.call_args.kwargs["timeout"] == DEFAULT_REQUEST_TIMEOUT
+
+
+def test_inherited_adapter_calls_also_carry_a_timeout(hass) -> None:
+    """The adapter's own methods route through the overridden transport."""
+    client = _posting_client(hass)
+    client._session.post.return_value = _response({"status": {"ok": True}})
+
+    client.get_device_info()
+    client.get_devices()
+
+    assert client._session.post.call_count == 2
+    for call in client._session.post.call_args_list:
+        assert call.kwargs["timeout"] == DEFAULT_REQUEST_TIMEOUT
+
+
+def test_auth_header_is_fresh_per_call(hass) -> None:
+    """Two config entries poll on different executor threads, so a shared
+    header dict would let one box's request go out with the other's token."""
+    box_a = _posting_client(hass, token="TOKEN-A")
+    box_b = _posting_client(hass, token="TOKEN-B")
+
+    headers_a = box_a._add_auth_header()
+    headers_b = box_b._add_auth_header()
+
+    assert headers_a == {"X-Context": "TOKEN-A"}
+    assert headers_b == {"X-Context": "TOKEN-B"}
+    assert headers_a is not headers_b
+    # The first caller's dict is untouched by the second.
+    assert box_a._add_auth_header() is not headers_a
+    assert headers_a == {"X-Context": "TOKEN-A"}
+
+
+def test_auth_header_never_touches_the_adapters_shared_default(hass) -> None:
+    """``_add_auth_header(self, headers={})`` upstream means one dict object
+    for every instance ever created; nothing here may write into it."""
+    shared_default = InternetboxAdapter._add_auth_header.__defaults__[0]
+    assert shared_default == {}
+
+    client = _posting_client(hass, token="TOKEN-A")
+    client._session.post.return_value = _response({"status": {}})
+    client._add_auth_header()
+    client.get_device_info()
+    client.get_devices()
+
+    assert shared_default == {}
+
+
+def test_send_request_does_not_mutate_the_caller_headers(hass) -> None:
+    client = _posting_client(hass)
+    headers = {"X-Context": "TOKEN"}
+
+    client._send_request("/ws", "{}", headers)
+
+    assert headers == {"X-Context": "TOKEN"}
+    sent = client._session.post.call_args.kwargs["headers"]
+    assert sent["X-Context"] == "TOKEN"
+    assert sent["Content-Type"] == "application/x-sah-ws-4-call+json"
+
+
+def test_auth_header_still_rejects_a_missing_token(hass) -> None:
+    client = InternetBoxClient(hass, "my-host", "my-password")
+
+    with pytest.raises(NoActiveSessionException):
+        client._add_auth_header()
