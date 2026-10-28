@@ -10,7 +10,8 @@ This is the Swisscom InternetBox Integration for Home Assistant.
 
 - Connects to your local Swisscom InternetBox
 - Creates device trackers for devices on your local network
-- Creates sensors for the router itself
+- Creates sensors for the router itself, including current download and upload speed
+- Downloadable diagnostics for bug reports, with identifying data redacted
 
 ### Sensors
 
@@ -26,8 +27,21 @@ All sensors below are grouped under a single device representing your InternetBo
 | External IP | WAN-side IP address of the InternetBox (diagnostic) | ✅ |
 | WAN received | Total bytes received on the WAN interface | ❌ |
 | WAN sent | Total bytes sent on the WAN interface | ❌ |
+| Download speed | Current WAN download rate, averaged over the poll interval | ✅ |
+| Upload speed | Current WAN upload rate, averaged over the poll interval | ✅ |
 | Link state | State of the WAN link | ✅ |
 | Link type | Type of the WAN link, e.g. fiber or DSL (diagnostic) | ✅ |
+
+**Download speed** and **Upload speed** are derived from the WAN byte counters, so they
+need two polls before they report anything and stay *unknown* until then. They are
+reported in bytes per second; change the unit per entity under ⚙️ **Settings** ➤
+**Unit of measurement** if you prefer Mbit/s.
+
+### Binary sensors
+
+| Binary sensor | Description | Enabled by default |
+| :------------ | :---------- | :----------------- |
+| WAN connectivity | Whether the WAN link is up, for use in automations | ✅ |
 
 > [!NOTE]
 > **Uptime**, **WAN received** and **WAN sent** are disabled by default. They will not

@@ -9,5 +9,5 @@
     "issue_tracker": "https://github.com/schmidtfx/swisscom-internetbox-hass/issues",
     "loggers": ["sc_inetbox_adapter"],
     "requirements": ["sc_inetbox_adapter==0.1.2"],
-    "version": "0.4.3"
+    "version": "0.5.0"
 }

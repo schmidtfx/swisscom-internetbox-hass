@@ -40,7 +40,9 @@ def _host(active: bool) -> MagicMock:
     return host
 
 
-@pytest.mark.parametrize("key", ["wan_rx", "wan_tx", "link_state", "link_type"])
+@pytest.mark.parametrize(
+    "key", ["wan_rx", "wan_tx", "wan_rx_rate", "wan_tx_rate", "link_state", "link_type"]
+)
 @pytest.mark.parametrize(
     "data",
     [
@@ -60,6 +62,22 @@ def test_wan_counters_come_from_wan_stats() -> None:
 
     assert _sensor("wan_rx", data).native_value == 42
     assert _sensor("wan_tx", data).native_value == 7
+
+
+def test_throughput_comes_from_wan_rates() -> None:
+    data = {"wan_rates": {"rx_bytes_per_s": 1000.0, "tx_bytes_per_s": 500.0}}
+
+    assert _sensor("wan_rx_rate", data).native_value == 1000.0
+    assert _sensor("wan_tx_rate", data).native_value == 500.0
+
+
+def test_throughput_is_unknown_until_a_rate_can_be_derived() -> None:
+    """The counters are there from the first poll, a rate needs two."""
+    data = {"wan_stats": {"rx_bytes": 42, "tx_bytes": 7}, "wan_rates": {}}
+
+    assert _sensor("wan_rx", data).native_value == 42
+    assert _sensor("wan_rx_rate", data).native_value is None
+    assert _sensor("wan_tx_rate", data).native_value is None
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfInformation
+from homeassistant.const import EntityCategory, UnitOfDataRate, UnitOfInformation
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_HOST, CONF_SSL, DEFAULT_NAME, DEFAULT_SSL, DOMAIN
 from .coordinator import InternetBoxDataCoordinator
+from .entity import router_identifier
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,27 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_registry_enabled_default=False,
     ),
+    # Derived from the counters above over the poll interval, so these cost no
+    # extra request. Enabled by default, unlike the raw counters: the rate is
+    # what belongs on a dashboard.
+    InternetBoxSensorDescription(
+        key="wan_rx_rate",
+        name="Download speed",
+        icon="mdi:download-network",
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    InternetBoxSensorDescription(
+        key="wan_tx_rate",
+        name="Upload speed",
+        icon="mdi:upload-network",
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
     InternetBoxSensorDescription(key="link_state", name="Link state", icon="mdi:link"),
     InternetBoxSensorDescription(
         key="link_type",
@@ -89,15 +111,6 @@ SENSORS: tuple[InternetBoxSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
-
-
-def router_identifier(entry: ConfigEntry) -> str:
-    """Return the device registry identifier of the router itself.
-
-    This must match the ``via_device`` used by the tracked device entities,
-    which is built from the config entry's unique id (the box serial number).
-    """
-    return entry.unique_id or entry.entry_id
 
 
 def _configuration_url(entry: ConfigEntry) -> str | None:
@@ -188,6 +201,7 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
         wan_info = data.get("wan_info") or {}
         wan_data = wan_info.get("data") or {}
         wan_stats = data.get("wan_stats") or {}
+        wan_rates = data.get("wan_rates") or {}
 
         if self.entity_description.key == "connected_devices":
             return len(devices)
@@ -213,6 +227,12 @@ class InternetBoxSensor(CoordinatorEntity[InternetBoxDataCoordinator], SensorEnt
 
         if self.entity_description.key == "wan_tx":
             return wan_stats.get("tx_bytes")
+
+        if self.entity_description.key == "wan_rx_rate":
+            return wan_rates.get("rx_bytes_per_s")
+
+        if self.entity_description.key == "wan_tx_rate":
+            return wan_rates.get("tx_bytes_per_s")
 
         if self.entity_description.key == "link_state":
             return wan_data.get("LinkState")

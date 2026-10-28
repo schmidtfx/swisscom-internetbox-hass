@@ -118,6 +118,12 @@ class InternetBoxClient(InternetboxAdapter):
         self._session_ready = False
         self._wan_stats_path: str | None = None
 
+        # The normalising helpers above throw away everything a bug report
+        # needs. Keep the last untouched reply of each so diagnostics.py can
+        # dump it without a second round of requests.
+        self.last_raw_devices: Any = None
+        self.last_raw_wan_stats: dict[str, Any] = {}
+
     # -- transport -------------------------------------------------------
     #
     # The methods below replace the adapter's own implementations. They exist
@@ -208,6 +214,7 @@ class InternetBoxClient(InternetboxAdapter):
             return self.get_devices()
 
         data = await self._hass.async_add_executor_job(_get)
+        self.last_raw_devices = data
         if isinstance(data, dict) and "error" in data:
             if "authentication" in str(data["error"]).lower():
                 raise NoActiveSessionException(data["error"])
@@ -264,19 +271,22 @@ class InternetBoxClient(InternetboxAdapter):
         """
         await self.async_ensure_session()
 
-        def _call(path: str) -> dict[str, int | None] | None:
+        def _call(path: str, replies: dict[str, Any]) -> dict[str, int | None] | None:
             headers = self._add_auth_header()
             payload = json.dumps({"parameters": {}})
             response = self._send_request(path, payload, headers)
             if response.status_code != 200:
+                replies[path] = {"http_status": response.status_code}
                 _LOGGER.debug("%s: HTTP %s", path, response.status_code)
                 return None
             try:
                 reply = response.json()
             except ValueError:
+                replies[path] = {"body": response.text[:200]}
                 _LOGGER.debug("%s: reply was not JSON", path)
                 return None
 
+            replies[path] = reply
             counters = _extract_wan_counters(reply)
             if counters is None:
                 _LOGGER.debug("%s: %s", path, _describe_error(reply))
@@ -288,8 +298,13 @@ class InternetBoxClient(InternetboxAdapter):
             if cached:
                 paths = (cached, *(p for p in WAN_STATS_PATHS if p != cached))
 
+            # Why the other objects were skipped is the whole story on a
+            # DSL-vs-fibre bug report, so keep every reply, not just the hit.
+            replies: dict[str, Any] = {}
+            self.last_raw_wan_stats = replies
+
             for path in paths:
-                counters = _call(path)
+                counters = _call(path, replies)
                 if counters is None:
                     continue
                 if path != cached:
@@ -304,6 +319,11 @@ class InternetBoxClient(InternetboxAdapter):
             return {}
 
         return await self._hass.async_add_executor_job(_get)
+
+    @property
+    def wan_stats_path(self) -> str | None:
+        """The sysbus object the WAN counters are currently read from."""
+        return self._wan_stats_path
 
     @property
     def host(self) -> str:

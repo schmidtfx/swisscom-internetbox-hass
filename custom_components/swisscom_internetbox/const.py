@@ -3,7 +3,7 @@ import datetime as dt
 from homeassistant.const import Platform
 
 DOMAIN = "swisscom_internetbox"
-PLATFORMS = [Platform.DEVICE_TRACKER, Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.DEVICE_TRACKER, Platform.SENSOR]
 
 CONF_HOST = "host"
 CONF_PASSWORD = "password"

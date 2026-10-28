@@ -10,6 +10,17 @@ from .const import DOMAIN
 from .coordinator import InternetBoxDataCoordinator
 
 
+def router_identifier(entry: ConfigEntry) -> str:
+    """Return the device registry identifier of the router itself.
+
+    Every box-level entity groups under this, and the tracked device entities
+    point their ``via_device`` at it, so the two must agree -- including on a
+    box that reported no serial number and so left the entry without a
+    unique id.
+    """
+    return entry.unique_id or entry.entry_id
+
+
 class InternetBoxDeviceEntity(CoordinatorEntity[InternetBoxDataCoordinator]):
     _attr_has_entity_name = True
 
@@ -27,7 +38,7 @@ class InternetBoxDeviceEntity(CoordinatorEntity[InternetBoxDataCoordinator]):
             connections={(dr.CONNECTION_NETWORK_MAC, device.mac)},
             default_name=self._device_name,
             default_model=device.type,
-            via_device=(DOMAIN, entry.unique_id),
+            via_device=(DOMAIN, router_identifier(entry)),
         )
 
     @abstractmethod
