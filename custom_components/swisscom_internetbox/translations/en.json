@@ -17,6 +17,9 @@
         "error": {
             "config": "Connection or login error: please check your configuration",
             "info": "Failed to get info from router"
+        },
+        "abort": {
+            "already_configured": "This InternetBox is already configured"
         }
     },
     "options": {
@@ -29,4 +32,4 @@
             }
         }
     }
-  }
+}
