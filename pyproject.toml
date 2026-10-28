@@ -8,12 +8,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "swisscom-internetbox"
-version = "0.1.0"
+# Keep in sync with "version" in custom_components/swisscom_internetbox/manifest.json,
+# which is the source of truth validated by the release workflow against the git tag.
+version = "0.4.3"
 description = "Home Assistant custom integration for the Swisscom InternetBox"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-authors = [{ name = "Your Name" }]
+authors = [{ name = "Felix Schmidt" }]
 
 # Runtime deps are managed by Home Assistant (manifest.json), not pip.
 # Keep this empty on purpose.
@@ -44,7 +46,7 @@ asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py313"
 src = ["custom_components", "tests"]
 fix = true
 
@@ -66,7 +68,7 @@ ignore = [
 "tests/**" = ["S101"]  # allow assert in tests
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true
