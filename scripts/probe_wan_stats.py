@@ -220,7 +220,9 @@ def main() -> int:
         print("  (none)")
     # A netdev that exists but is ACL-blocked is a different problem from one
     # that does not exist, and only the first kind is worth chasing further.
-    print(f"permission denied (netdev exists, role blocked): {', '.join(denied) or '-'}")
+    print(
+        f"permission denied (netdev exists, role blocked): {', '.join(denied) or '-'}"
+    )
     print(f"no getNetDevStats function (not a netdev): {', '.join(missing) or '-'}")
 
     if args.dump:
