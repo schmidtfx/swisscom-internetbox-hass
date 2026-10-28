@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, ConfigFlow
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
@@ -23,9 +23,11 @@ from .const import (
     DOMAIN,
 )
 
+_LOGGER = logging.getLogger(__name__)
 
-def _discovery_schema_with_defaults(discovery_info):
-    return vol.Schema(_ordered_shared_schema(discovery_info))
+# Keys into the ``config.error`` section of strings.json / translations.
+ERROR_CONFIG = "config"
+ERROR_INFO = "info"
 
 
 def _user_schema_with_defaults(user_input):
@@ -53,10 +55,7 @@ def _ordered_shared_schema(schema_input):
     }
 
 
-class OptionsFlowHandler(config_entries.ConfigFlow):
-    def __init__(self, config_entry: ConfigEntry):
-        self._config_entry = config_entry
-
+class OptionsFlowHandler(OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
@@ -65,10 +64,12 @@ class OptionsFlowHandler(config_entries.ConfigFlow):
             {
                 vol.Optional(
                     CONF_CONSIDER_HOME,
-                    default=self._config_entry.options.get(
-                        CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME.total_seconds()
+                    # total_seconds() is a float; keep the default an int so
+                    # the schema's own default validates against it.
+                    default=self.config_entry.options.get(
+                        CONF_CONSIDER_HOME, int(DEFAULT_CONSIDER_HOME.total_seconds())
                     ),
-                ): int
+                ): vol.Coerce(int)
             }
         )
 
@@ -84,12 +85,11 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
             CONF_SSL: DEFAULT_SSL,
             CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
         }
-        self.discoverd = False
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlowHandler:
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()
 
     async def _show_setup_form(
         self, user_input: dict[str, Any] | None = None, errors=None
@@ -97,14 +97,9 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             user_input = {}
 
-        if self.discoverd:
-            data_schema = _discovery_schema_with_defaults(user_input)
-        else:
-            data_schema = _user_schema_with_defaults(user_input)
-
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=_user_schema_with_defaults(user_input),
             errors=errors or {},
             description_placeholders=self.placeholders,
         )
@@ -133,14 +128,27 @@ class SwisscomFlowHandler(ConfigFlow, domain=DOMAIN):
 
         try:
             info = await client.async_get_device_info()
-            if info is None:
-                errors["base"] = info
-                return await self._show_setup_form(user_input, errors)
         except Exception:
-            errors["base"] = "Could not login to InternetBox"
+            _LOGGER.debug(
+                "Could not log in to the InternetBox at %s", host, exc_info=True
+            )
+            errors["base"] = ERROR_CONFIG
             return await self._show_setup_form(user_input, errors)
 
-        await self.async_set_unique_id(info["SerialNumber"], raise_on_progress=False)
+        if not isinstance(info, dict) or not info:
+            errors["base"] = ERROR_INFO
+            return await self._show_setup_form(user_input, errors)
+
+        # Not every box reports a serial number; without one there is nothing
+        # stable to key the entry on, so surface it as a form error instead of
+        # raising a KeyError out of the flow.
+        serial_number = info.get("SerialNumber")
+        if not serial_number:
+            _LOGGER.debug("Device info from %s carries no SerialNumber", host)
+            errors["base"] = ERROR_INFO
+            return await self._show_setup_form(user_input, errors)
+
+        await self.async_set_unique_id(serial_number, raise_on_progress=False)
         self._abort_if_unique_id_configured(updates=config_data)
 
         if (
