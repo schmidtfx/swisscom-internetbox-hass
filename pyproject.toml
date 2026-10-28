@@ -35,6 +35,13 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# custom_components is a namespace package (no __init__.py), so it is only
+# importable when the repo root is on sys.path. `python -m pytest` happens to
+# add the cwd, but the bare `pytest` CI runs does not, which is why collection
+# failed there with ModuleNotFoundError. Setting it here makes both
+# invocations behave the same, and takes precedence over any stale copy of the
+# integration that may be installed into site-packages.
+pythonpath = ["."]
 asyncio_mode = "auto"
 
 [tool.ruff]
