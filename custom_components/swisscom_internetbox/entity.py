@@ -42,15 +42,20 @@ class InternetBoxDeviceEntity(CoordinatorEntity[InternetBoxDataCoordinator]):
 
     @property
     def _device_name(self):
-        name = self._device.hostname
+        device = self._device
+        if device is None:
+            return None
+        name = device.hostname
         if not name or name == "--":
-            return self._device.ip
+            # Fall back to the MAC so the entity always has a usable name, even
+            # for a host the box reports without hostname or IP.
+            return device.ip or device.mac
         return name
 
     @property
     def _is_active(self):
-        return self._device.active
+        return bool(self._device and self._device.active)
 
     @property
     def _mac(self):
-        return self._device.mac
+        return self._device.mac if self._device else None
